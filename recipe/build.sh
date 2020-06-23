@@ -32,9 +32,13 @@ LINKFLAGS="${LINKFLAGS} -L${LIBRARY_PATH}"
 ./bootstrap.sh \
     --prefix="${PREFIX}" \
     --without-libraries=python \
-    --with-toolset=${TOOLSET} \
+    --with-toolset=cc \
     --with-icu="${PREFIX}" \
     || cat bootstrap.log
+
+# https://svn.boost.org/trac10/ticket/5917
+# https://stackoverflow.com/a/5244844/1005215
+sed -i.bak "s,cc,${TOOLSET},g" ${SRC_DIR}/project-config.jam
 
 ADDRESS_MODEL="${ARCH}"
 ARCHITECTURE=x86
