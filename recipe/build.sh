@@ -16,9 +16,9 @@ LIBRARY_PATH="${PREFIX}/lib"
 # Always build PIC code for enable static linking into other shared libraries
 CXXFLAGS="${CXXFLAGS} -fPIC"
 
-if [ "$(uname)" == "Darwin" ]; then
+if [[ "${target_platform}" == osx* ]]; then
     TOOLSET=clang
-elif [ "$(uname)" == "Linux" ]; then
+elif [[ "${target_platform}" == linux* ]]; then
     TOOLSET=gcc
 fi
 
@@ -29,32 +29,48 @@ EOF
 
 LINKFLAGS="${LINKFLAGS} -L${LIBRARY_PATH}"
 
-./bootstrap.sh \
+CXX=${CXX_FOR_BUILD:-${CXX}} CC=${CC_FOR_BUILD:-${CC}} ./bootstrap.sh \
     --prefix="${PREFIX}" \
     --without-libraries=python \
-    --with-toolset=cc \
-    --with-icu="${PREFIX}" \
-    | tee bootstrap.log 2>&1
+    --with-toolset=${TOOLSET} \
+    --with-icu="${PREFIX}" || (cat bootstrap.log; exit 1)
 
-# https://svn.boost.org/trac10/ticket/5917
-# https://stackoverflow.com/a/5244844/1005215
-sed -i.bak "s,cc,${TOOLSET},g" ${SRC_DIR}/project-config.jam
+ADDRESS_MODEL="${ARCH}"
+ARCHITECTURE=x86
+ABI="sysv"
+
+if [ "${ADDRESS_MODEL}" == "aarch64" ] || [ "${ADDRESS_MODEL}" == "arm64" ]; then
+    ADDRESS_MODEL=64
+    ARCHITECTURE=arm
+    ABI="aapcs"
+elif [ "${ADDRESS_MODEL}" == "ppc64le" ]; then
+    ADDRESS_MODEL=64
+    ARCHITECTURE=power
+fi
+
+if [[ "$target_platform" == osx-* ]]; then
+    BINARY_FORMAT="mach-o"
+elif [[ "$target_platform" == linux-* ]]; then
+    BINARY_FORMAT="elf"
+fi
 
 ./b2 -q \
     variant=release \
-    address-model="${ARCH}" \
-    architecture=x86 \
+    address-model="${ADDRESS_MODEL}" \
+    architecture="${ARCHITECTURE}" \
+    binary-format="${BINARY_FORMAT}" \
+    abi="${ABI}" \
     debug-symbols=off \
     threading=multi \
     runtime-link=shared \
-    link=static,shared \
+    link=shared \
     toolset=${TOOLSET} \
     include="${INCLUDE_PATH}" \
     cxxflags="${CXXFLAGS}" \
     linkflags="${LINKFLAGS}" \
     --layout=system \
     -j"${CPU_COUNT}" \
-    install | sed -e "s|${PREFIX}|<PREFIX>|g" | tee b2.log 2>&1
+    install
 
 # Remove Python headers as we don't build Boost.Python.
 rm "${PREFIX}/include/boost/python.hpp"

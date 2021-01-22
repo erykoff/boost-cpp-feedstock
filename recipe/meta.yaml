@@ -10,7 +10,7 @@ source:
   sha256: 430ae8354789de4fd19ee52f3b1f739e1fba576f0aded0897c3c2bc00fb38778
   patches:
     # https://github.com/boostorg/build/pull/642
-    - 456be0b7ecca065fbccf380c2f51e0985e608ba0.patch  # [osx and arm64]
+    - 456be0b7ecca065fbccf380c2f51e0985e608ba0_1_17.patch
 
 
 build:
@@ -82,15 +82,13 @@ test:
             "wserialization"
     ] %}
     {% for each_boost_lib in boost_libs %}
-    - test -f $PREFIX/lib/libboost_{{ each_boost_lib }}.a                                                 # [unix]
+    - test -f $PREFIX/lib/libboost_{{ each_boost_lib }}.a                                                 # [linux]
     - test -f $PREFIX/lib/libboost_{{ each_boost_lib }}.dylib                                             # [osx]
     - test -f $PREFIX/lib/libboost_{{ each_boost_lib }}.so                                                # [linux]
     - if not exist %PREFIX%\\Library\\bin\\boost_{{ each_boost_lib }}.dll exit 1                          # [win]
     - if not exist %PREFIX%\\Library\\lib\\boost_{{ each_boost_lib }}.lib exit 1                          # [win]
     - if not exist %PREFIX%\\Library\\lib\\libboost_{{ each_boost_lib }}.lib exit 1                       # [win]
     {% endfor %}
-    - conda inspect linkages -p $PREFIX $PKG_NAME  # [not win]
-    - conda inspect objects -p $PREFIX $PKG_NAME  # [osx]
 
 about:
   home: http://www.boost.org/
